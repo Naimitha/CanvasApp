@@ -20,9 +20,7 @@ export default function DrawingCanvasApp() {
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.lineCap = "round";
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lineWidth;
-      ctxRef.current = ctx;
+    ctxRef.current = ctx;
     }
   }, []);
 
