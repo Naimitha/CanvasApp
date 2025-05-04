@@ -1,7 +1,6 @@
 "use client";
 import React, { useRef, useState, useEffect } from "react";
 
-// Let's Get Creative! 🎨 Start sketching your ideas with this simple digital canvas.
 export default function DrawingCanvasApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
