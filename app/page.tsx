@@ -119,7 +119,7 @@ export default function DrawingCanvasApp() {
 
   return (
     <div className="flex flex-col items-center p-4">
-      <h1 className="text-4xl font-bold mb-4">🎨 Let's Get Creative!</h1>
+      <h1 className="text-4xl font-bold mb-4">🎨 Let&apos;s Get Creative!</h1>
       <div className="mb-4 flex flex-wrap gap-4 justify-center">
         <label className="flex items-center gap-2">
           🖌️ Color:
