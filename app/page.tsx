@@ -1,103 +1,165 @@
-import Image from "next/image";
+"use client";
+import React, { useRef, useState, useEffect } from "react";
 
-export default function Home() {
+// Let's Get Creative! 🎨 Start sketching your ideas with this simple digital canvas.
+export default function DrawingCanvasApp() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [color, setColor] = useState("#000000");
+  const [lineWidth, setLineWidth] = useState(3);
+  const [tool, setTool] = useState("brush");
+  const [history, setHistory] = useState<ImageData[]>([]);
+  const [redoStack, setRedoStack] = useState<ImageData[]>([]);
+  const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.width = window.innerWidth * 0.8;
+    canvas.height = window.innerHeight * 0.6;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.lineCap = "round";
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctxRef.current = ctx;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (ctxRef.current) {
+      ctxRef.current.strokeStyle = color;
+      ctxRef.current.lineWidth = lineWidth;
+    }
+  }, [color, lineWidth]);
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    if (!ctx || !canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setIsDrawing(true);
+    setStartPos({ x, y });
+    setHistory((prev) => [...prev, ctx.getImageData(0, 0, canvas.width, canvas.height)]);
+    if (tool === "brush") {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !ctxRef.current || !canvasRef.current || !startPos) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const ctx = ctxRef.current;
+
+    if (tool === "brush") {
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    } else if (tool === "eraser") {
+      ctx.clearRect(x - 5, y - 5, 10, 10);
+    } else {
+      ctx.putImageData(history[history.length - 1], 0, 0);
+      ctx.beginPath();
+      if (tool === "rectangle") {
+        ctx.strokeRect(startPos.x, startPos.y, x - startPos.x, y - startPos.y);
+      } else if (tool === "circle") {
+        const radius = Math.sqrt(Math.pow(x - startPos.x, 2) + Math.pow(y - startPos.y, 2));
+        ctx.arc(startPos.x, startPos.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.closePath();
+    }
+  };
+
+  const stopDrawing = () => {
+    ctxRef.current?.closePath();
+    setIsDrawing(false);
+    setStartPos(null);
+  };
+
+  const undo = () => {
+    if (!canvasRef.current || history.length === 0) return;
+    const ctx = ctxRef.current;
+    const canvas = canvasRef.current;
+    const newHistory = [...history];
+    const lastState = newHistory.pop();
+    setHistory(newHistory);
+    if (lastState && ctx) {
+      ctx.putImageData(lastState, 0, 0);
+    }
+  };
+
+  const redo = () => {
+    if (!canvasRef.current || redoStack.length === 0) return;
+    const ctx = ctxRef.current;
+    const canvas = canvasRef.current;
+    const nextState = redoStack.pop();
+    if (nextState && ctx) {
+      ctx.putImageData(nextState, 0, 0);
+      setHistory((prev) => [...prev, nextState]);
+    }
+  };
+
+  const clearCanvas = () => {
+    if (canvasRef.current && ctxRef.current) {
+      ctxRef.current.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      setHistory([]);
+      setRedoStack([]);
+    }
+  };
+
+  const saveImage = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = "drawing.png";
+    link.href = canvas.toDataURL();
+    link.click();
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="flex flex-col items-center p-4">
+      <h1 className="text-4xl font-bold mb-4">🎨 Let's Get Creative!</h1>
+      <div className="mb-4 flex flex-wrap gap-4 justify-center">
+        <label className="flex items-center gap-2">
+          🖌️ Color:
+          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+        </label>
+        <label className="flex items-center gap-2">
+          📏 Size:
+          <input type="range" min="1" max="20" value={lineWidth} onChange={(e) => setLineWidth(Number(e.target.value))} />
+        </label>
+        <button onClick={() => setTool("brush")} className={`px-3 py-1 rounded ${tool === "brush" ? "bg-pink-500 text-white" : "bg-pink-200"}`}>
+          Brush
+        </button>
+        <button onClick={() => setTool("eraser")} className={`px-3 py-1 rounded ${tool === "eraser" ? "bg-yellow-500 text-white" : "bg-yellow-200"}`}>
+          Eraser
+        </button>
+        <button onClick={() => setTool("rectangle")} className={`px-3 py-1 rounded ${tool === "rectangle" ? "bg-teal-500 text-white" : "bg-teal-200"}`}>
+          Rectangle
+        </button>
+        <button onClick={() => setTool("circle")} className={`px-3 py-1 rounded ${tool === "circle" ? "bg-blue-500 text-white" : "bg-blue-200"}`}>
+          Circle
+        </button>
+        <button onClick={undo} className="px-3 py-1 bg-yellow-400 rounded">Undo</button>
+        <button onClick={redo} className="px-3 py-1 bg-indigo-400 text-white rounded">Redo</button>
+        <button onClick={clearCanvas} className="px-3 py-1 bg-red-500 text-white rounded">Clear</button>
+        <button onClick={saveImage} className="px-3 py-1 bg-green-500 text-white rounded">Save</button>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <canvas
+        ref={canvasRef}
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={stopDrawing}
+        onMouseLeave={stopDrawing}
+        className="border border-gray-400 rounded shadow-md bg-white"
+      ></canvas>
     </div>
   );
 }
