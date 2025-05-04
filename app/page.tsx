@@ -82,7 +82,6 @@ export default function DrawingCanvasApp() {
   const undo = () => {
     if (!canvasRef.current || history.length === 0) return;
     const ctx = ctxRef.current;
-    const canvas = canvasRef.current;
     const newHistory = [...history];
     const lastState = newHistory.pop();
     setHistory(newHistory);
@@ -94,7 +93,6 @@ export default function DrawingCanvasApp() {
   const redo = () => {
     if (!canvasRef.current || redoStack.length === 0) return;
     const ctx = ctxRef.current;
-    const canvas = canvasRef.current;
     const nextState = redoStack.pop();
     if (nextState && ctx) {
       ctx.putImageData(nextState, 0, 0);
